@@ -14,7 +14,7 @@ project:
     - file: markdown/index.md
     - title: Analysis
       children:
-        - file: notebooks/02_analyse_example.ipynb
+        - file: notebooks/04_analyse_industry_portfolios.ipynb
 site:
   options:
     folders: true

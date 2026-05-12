@@ -1,0 +1,25 @@
+"""Mapping from Ken French filename stems to ISO 3166-1 alpha-3 codes."""
+
+FRENCH_TO_ISO3 = {
+    "Austria":  "AUT",
+    "Austrlia": "AUS",
+    "Belgium":  "BEL",
+    "Canada":   "CAN",
+    "Denmark":  "DNK",
+    "Finland":  "FIN",
+    "France":   "FRA",
+    "Germany":  "DEU",
+    "HongKong": "HKG",
+    "Ireland":  "IRL",
+    "Italy":    "ITA",
+    "Japan":    "JPN",
+    "Malaysia": "MYS",
+    "Nethrlnd": "NLD",
+    "NewZland": "NZL",
+    "Norway":   "NOR",
+    "Singapor": "SGP",
+    "Spain":    "ESP",
+    "Sweden":   "SWE",
+    "Swtzrlnd": "CHE",
+    "UK":       "GBR",
+}

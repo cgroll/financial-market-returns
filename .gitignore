@@ -14,11 +14,14 @@ build/
 .Python
 env/
 
-# Data (managed by Snakemake, not git)
+# Data (managed by Snakemake, not git — re-run pipeline to reproduce)
 data/downloads/*
 data/processed/*
 !data/downloads/.gitkeep
 !data/processed/.gitkeep
+
+# Snakemake internals
+.snakemake/
 
 # Secrets
 .env

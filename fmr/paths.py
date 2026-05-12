@@ -77,6 +77,50 @@ class ProjPaths:
         return self.output_path / "reports"
 
     # ------------------------------------------------------------------ #
+    # Ken French data library                                             #
+    # ------------------------------------------------------------------ #
+
+    @property
+    def ken_french_path(self) -> Path:
+        """Root directory for all Ken French data library downloads."""
+        return self.downloads_path / "ken_french"
+
+    @property
+    def international_countries_path(self) -> Path:
+        """Extracted Ken French international country returns."""
+        return self.ken_french_path / "international_countries"
+
+    @property
+    def international_countries_monthly_returns_path(self) -> Path:
+        """Processed monthly market returns per country (CSV files)."""
+        return self.processed_data_path / "ken_french" / "international_countries" / "monthly_returns"
+
+    @property
+    def industry_portfolios_30_path(self) -> Path:
+        """Raw extracted Ken French 30 Industry Portfolios daily file."""
+        return self.downloads_path / "ken_french" / "industry_portfolios_30"
+
+    @property
+    def industry_portfolios_30_daily_returns_path(self) -> Path:
+        """Processed daily VW returns for 30 industry portfolios (CSV)."""
+        return self.processed_data_path / "ken_french" / "industry_portfolios_30" / "daily_returns.csv"
+
+    @property
+    def ken_french_processed_path(self) -> Path:
+        """Root directory for all processed Ken French outputs."""
+        return self.processed_data_path / "ken_french"
+
+    @property
+    def countries_synth_prices_path(self) -> Path:
+        """Synthetic prices for international countries (wide CSV, one column per ISO3)."""
+        return self.ken_french_processed_path / "countries_synth_prices.csv"
+
+    @property
+    def industries_synth_prices_path(self) -> Path:
+        """Synthetic prices for 30 industry portfolios (wide CSV, one column per industry)."""
+        return self.ken_french_processed_path / "industries_synth_prices.csv"
+
+    # ------------------------------------------------------------------ #
     # Example data files — replace with project-specific paths            #
     # ------------------------------------------------------------------ #
 

@@ -7,12 +7,16 @@ It is written for human contributors and AI agents alike.
 
 ```
 project-root/
-├── pkg/                     # Python package — shared utilities
+├── fmr/                     # Python package — shared utilities
 │   ├── __init__.py
-│   └── paths.py             # Centralized path configuration
+│   ├── paths.py             # Centralized path configuration
+│   ├── finance.py           # Financial computations (drawdowns, returns)
+│   └── country_codes.py     # Ken French filename → ISO 3166-1 alpha-3 mapping
 ├── pipeline/                # Data pipeline scripts
 │   ├── 01_download_*.py     # Pure data acquisition (no charts)
-│   └── 02_analyse_*.py      # Analysis scripts → become book notebooks
+│   ├── 02_process_*.py      # Data cleaning and transformation
+│   ├── 03_create_*.py       # Derived datasets
+│   └── 04_analyse_*.py      # Analysis scripts → become book notebooks
 ├── book/                    # MyST Jupyter Book source
 │   ├── notebooks/           # Executed .ipynb files (produced by Snakemake)
 │   ├── markdown/            # Static hand-written content
@@ -21,9 +25,9 @@ project-root/
 │   ├── downloads/           # Raw downloaded data (git-ignored)
 │   └── processed/           # Processed/transformed data (git-ignored)
 ├── output/
-│   ├── images/              # Chart images saved by pipeline scripts
+│   ├── images/              # Chart images saved by pipeline scripts (git-tracked)
 │   └── reports/             # Report files
-├── Snakefile                # Pipeline definition (equivalent of dvc.yaml)
+├── Snakefile                # Pipeline definition
 └── pyproject.toml           # Dependencies managed by uv
 ```
 
@@ -48,76 +52,79 @@ A rule declares *how* to produce an output from inputs:
 ```python
 rule my_stage:
     input:
-        data = "data/downloads/raw.parquet",
-        script = "pipeline/02_analyse.py",
+        data   = "data/processed/something.csv",
+        script = "pipeline/04_analyse.py",
     output:
-        notebook = "book/notebooks/02_analyse.ipynb",
-        img      = "output/images/02_chart.png",
+        notebook = "book/notebooks/04_analyse.ipynb",
+        img      = "output/images/04_chart.png",
     shell:
         "MPLBACKEND=Agg uv run jupytext ..."
 ```
 
 Snakemake compares **file modification timestamps**: if all outputs are newer
-than all inputs, the rule is skipped. This is the key difference from DVC —
-there is no explicit lock file; timestamps drive incremental builds.
+than all inputs, the rule is skipped.
 
-### `ancient()` for downloaded data
+### Download rules
 
-Downloaded files should not be re-fetched every run. Wrap their paths in
-`ancient()` so Snakemake treats them as infinitely old and never triggers
-re-download as long as the file exists:
+Download rules have no inputs, only a `directory()` output. Snakemake skips
+the rule when the directory already exists; it runs when the directory is absent.
 
 ```python
-rule download_data:
+rule download_something:
     output:
-        ancient("data/downloads/raw.parquet"),
+        directory("data/downloads/something"),
     shell:
-        "uv run python pipeline/01_download.py"
+        "uv run python pipeline/01_download_something.py"
 ```
 
-To force a fresh download: delete the file and re-run `snakemake`.
+To force a fresh download: delete the directory and re-run, or use
+`snakemake --cores 1 -R <rule>`.
 
 ### Running the pipeline
 
 ```bash
-snakemake -n          # dry-run: show what would execute
-snakemake -j4         # run with up to 4 parallel jobs
-snakemake <file>      # build one specific output
-snakemake -R <rule>   # force-re-run a specific rule
-snakemake --forceall  # re-run everything unconditionally
+snakemake --cores 1 -n       # dry-run: show what would execute
+snakemake --cores 4          # run with up to 4 parallel jobs
+snakemake --cores 1 <file>   # build one specific output file
+snakemake --cores 1 -R <rule>  # force-re-run a specific rule
 ```
 
 Or via Make shortcuts:
 
 ```bash
-make run       # snakemake -j4
-make dry-run   # snakemake -n
+make run       # snakemake --cores 4
+make dry-run   # snakemake --cores 1 -n
 make serve     # myst start (local book preview)
 ```
 
 ### The `rule all` convention
 
 The top of the Snakefile defines a pseudo-rule whose inputs are the final
-targets. Running bare `snakemake` builds these:
+targets. Running `snakemake --cores N` (no target argument) builds these:
 
 ```python
 rule all:
     input:
-        "book/notebooks/02_analyse_example.ipynb",
-        "book/notebooks/03_another_analysis.ipynb",
+        "book/notebooks/04_analyse_industry_portfolios.ipynb",
 ```
 
 ## Pipeline Conventions
 
-### Two types of scripts
+### Script numbering
 
-**1. Pure data scripts** (`01_*`, `00_*`, …)
+| Prefix | Type | Purpose |
+|--------|------|---------|
+| `01_download_*` | Pure data | Download and extract raw data |
+| `02_process_*` | Pure data | Clean and reshape raw data |
+| `03_create_*` | Pure data | Derive new datasets from processed data |
+| `04_analyse_*` | Analysis | Produce charts and notebook |
+
+### Pure data scripts (`01_*`, `02_*`, `03_*`)
 - No charts or visualizations.
 - Read/write data files only.
-- Registered in Snakemake with `ancient()` outputs to avoid re-downloading.
 - Not converted to notebooks.
 
-**2. Analysis scripts** (`02_*`, `03_*`, …)
+### Analysis scripts (`04_*` and higher)
 - Use jupytext `# %%` cell markers and a jupytext/kernelspec header.
 - Save all figures to `output/images/` via `fig.savefig()`.
 - Use MyST `{figure}` directives in `# %% [markdown]` cells.
@@ -143,12 +150,12 @@ rule all:
 # %%
 fig, ax = plt.subplots(figsize=(14, 4))
 ax.plot(...)
-fig.savefig(paths.images_path / "03_my_chart.png", dpi=150, bbox_inches="tight")
+fig.savefig(paths.images_path / "04_my_chart.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # %% [markdown]
-# ```{figure} ../../output/images/03_my_chart.png
-# :name: fig-03-my-chart
+# ```{figure} ../../output/images/04_my_chart.png
+# :name: fig-04-my-chart
 # Caption describing the figure.
 # ```
 ```
@@ -161,13 +168,13 @@ Naming convention: `<script_number>_<descriptive_name>.png`.
 ### Snakemake rule for analysis scripts
 
 ```python
-rule process_my_analysis:
+rule analyse_something:
     input:
-        script = "pipeline/03_my_analysis.py",
-        data   = "data/downloads/raw.parquet",
+        script = "pipeline/04_analyse_something.py",
+        data   = "data/processed/something.csv",
     output:
-        notebook = "book/notebooks/03_my_analysis.ipynb",
-        img      = "output/images/03_my_chart.png",
+        notebook = "book/notebooks/04_analyse_something.ipynb",
+        img      = "output/images/04_chart.png",
     shell:
         """
         MPLBACKEND=Agg uv run jupytext --to notebook --execute \
@@ -178,27 +185,28 @@ import nbformat
 nb = nbformat.read('{output.notebook}', as_version=4)
 nb.cells = [c for c in nb.cells
             if not (c.cell_type == 'raw' and 'jupytext' in c.source)]
+nb.metadata.pop('jupytext', None)
 nbformat.write(nb, '{output.notebook}')
 "
         """
 ```
 
-The post-processing step strips a raw jupytext metadata cell that MyST does
-not recognize. The `MPLBACKEND=Agg` environment variable makes `plt.show()`
-a no-op in headless mode.
+The post-processing step strips the raw jupytext metadata cell and the
+notebook-level jupytext key that MyST does not recognize.
+`MPLBACKEND=Agg` makes `plt.show()` a no-op in headless mode.
 
 ## Path Conventions
 
 All scripts must be runnable from any working directory. Use `ProjPaths`
-from `pkg/paths.py`:
+from `fmr/paths.py`:
 
 ```python
-from pkg.paths import ProjPaths
+from fmr.paths import ProjPaths
 
 paths = ProjPaths()
 
-df = pd.read_parquet(paths.example_raw_file)
-fig.savefig(paths.images_path / "03_chart.png")
+df = pd.read_csv(paths.countries_synth_prices_path)
+fig.savefig(paths.images_path / "04_chart.png")
 ```
 
 Key paths:
@@ -210,19 +218,25 @@ Key paths:
 | `paths.processed_data_path` | `data/processed/` |
 | `paths.images_path` | `output/images/` |
 | `paths.pipeline_path` | `pipeline/` |
+| `paths.international_countries_path` | `data/downloads/ken_french/international_countries/` |
+| `paths.international_countries_monthly_returns_path` | `data/processed/ken_french/international_countries/monthly_returns/` |
+| `paths.industry_portfolios_30_path` | `data/downloads/ken_french/industry_portfolios_30/` |
+| `paths.industry_portfolios_30_daily_returns_path` | `data/processed/ken_french/industry_portfolios_30/daily_returns.csv` |
+| `paths.countries_synth_prices_path` | `data/processed/ken_french/countries_synth_prices.csv` |
+| `paths.industries_synth_prices_path` | `data/processed/ken_french/industries_synth_prices.csv` |
 
 ## Adding a New Pipeline Stage
 
 1. **Write the script** in `pipeline/`.
-2. **Add a property** to `pkg/paths.py` for every new data file:
+2. **Add a property** to `fmr/paths.py` for every new data file:
    ```python
    @property
    def my_new_file(self) -> Path:
        """One-line description."""
-       return self.downloads_path / "my_data.parquet"
+       return self.processed_data_path / "my_data.csv"
    ```
 3. **Add a rule** to `Snakefile` with `input`, `output`, and `shell`.
-4. **Add the notebook** to `ANALYSIS_NOTEBOOKS` in `Snakefile` (if analysis).
+4. **Add the notebook** to `rule all` in `Snakefile` (if analysis).
 5. **Add the notebook** to the `toc` in `book/myst.yml`.
 
 ## Git Conventions
@@ -232,10 +246,10 @@ Key paths:
 | `pipeline/*.py` source files | `data/downloads/*` |
 | `book/notebooks/*.ipynb` generated notebooks | `data/processed/*` |
 | `output/images/*.png` generated charts | `.venv/` |
-| `book/markdown/*.md` static content | |
+| `book/markdown/*.md` static content | `.snakemake/` |
 
-The `.ipynb` notebooks and images are tracked so the book can be rebuilt
-from git without re-running the pipeline (CI only runs `myst build`).
+Notebooks and images are tracked so the book can be rebuilt from git without
+re-running the pipeline (CI only runs `myst build`).
 
 ## Workflow Summary
 

@@ -1,69 +1,77 @@
 # Snakefile — project pipeline
 #
-# Concepts used here:
+# Download rules  — rules with no input files are skipped automatically when
+#                   their outputs exist. Delete the sentinel or use
+#                   `snakemake --cores 1 -R <rule>` to force a re-run.
 #
-#   ancient(path)   — if the file already exists, treat it as infinitely old so
-#                     this rule is skipped. Ideal for downloaded data that
-#                     should not be re-fetched every run.
-#
-#   rule all        — pseudo-rule whose `input` lists the final targets.
-#                     `snakemake` (no arguments) builds everything in this list.
+# rule all        — builds all final processed outputs when you run
+#                   `snakemake --cores 1` with no target argument.
 #
 # Common commands:
-#   snakemake -n              dry-run: show what would be executed
-#   snakemake -j4             run with 4 parallel jobs
-#   snakemake <target>        build one specific output file
-#   snakemake --forcerun <rule>   force a rule to re-run even if outputs exist
+#   snakemake --cores 1 -n          dry-run: show what would be executed
+#   snakemake --cores 4             run everything (up to 4 parallel jobs)
+#   snakemake --cores 1 <target>    build one specific output
+#   snakemake --cores 1 -R <rule>   force-re-run a specific rule
+#   snakemake --forceall --cores 4  re-run everything unconditionally
 
 # ---------------------------------------------------------------------------
-# Project-wide settings
-# ---------------------------------------------------------------------------
-
-# List every notebook that the book should contain.
-# Extend this list when you add a new analysis script.
-ANALYSIS_NOTEBOOKS = [
-    "book/notebooks/02_analyse_example.ipynb",
-]
-
-# ---------------------------------------------------------------------------
-# Default target
+# Default target — all final processed outputs
 # ---------------------------------------------------------------------------
 
 rule all:
     input:
-        ANALYSIS_NOTEBOOKS
+        "data/processed/ken_french/countries_synth_prices.csv",
+        "data/processed/ken_french/industries_synth_prices.csv",
+        "book/notebooks/04_analyse_industry_portfolios.ipynb",
 
 # ---------------------------------------------------------------------------
 # Download rules
 # ---------------------------------------------------------------------------
-# Use ancient() on outputs so that existing downloaded files are never
-# re-fetched.  Delete the file manually to force a fresh download.
 
-rule download_example:
+rule download_country_data:
     output:
-        ancient("data/downloads/example_data.parquet"),
+        directory("data/downloads/ken_french/international_countries"),
     shell:
-        "uv run python pipeline/01_download_example.py"
+        "uv run python pipeline/01_download_country_data.py"
 
-# ---------------------------------------------------------------------------
-# Analysis / notebook rules
-# ---------------------------------------------------------------------------
-# Pattern for every analysis script:
-#   1. jupytext executes the .py script and writes an .ipynb with outputs
-#   2. A Python one-liner strips the raw jupytext metadata cell that MyST
-#      does not understand
-#
-# Add one rule per analysis script and list all image outputs explicitly so
-# Snakemake can track them as dependencies of downstream rules.
-
-rule process_example:
-    input:
-        script  = "pipeline/02_analyse_example.py",
-        data    = "data/downloads/example_data.parquet",
+rule download_industry_portfolios_30:
     output:
-        notebook = "book/notebooks/02_analyse_example.ipynb",
-        img1     = "output/images/02_daily_average.png",
-        img2     = "output/images/02_category_dist.png",
+        directory("data/downloads/ken_french/industry_portfolios_30"),
+    shell:
+        "uv run python pipeline/01_download_industry_portfolios_30.py"
+
+# ---------------------------------------------------------------------------
+# Processing rules
+# ---------------------------------------------------------------------------
+
+rule process_country_returns:
+    input:
+        downloads = "data/downloads/ken_french/international_countries",
+        script    = "pipeline/02_process_country_returns.py",
+    output:
+        directory("data/processed/ken_french/international_countries/monthly_returns"),
+    shell:
+        "uv run python {input.script}"
+
+rule process_industry_portfolios_30:
+    input:
+        downloads = "data/downloads/ken_french/industry_portfolios_30",
+        script    = "pipeline/02_process_industry_portfolios_30.py",
+    output:
+        "data/processed/ken_french/industry_portfolios_30/daily_returns.csv",
+    shell:
+        "uv run python {input.script}"
+
+rule analyse_industry_portfolios:
+    input:
+        script = "pipeline/04_analyse_industry_portfolios.py",
+        data   = "data/processed/ken_french/industries_synth_prices.csv",
+    output:
+        notebook = "book/notebooks/04_analyse_industry_portfolios.ipynb",
+        img1     = "output/images/04_industry_prices.png",
+        img2     = "output/images/04_industry_log_prices.png",
+        img3     = "output/images/04_industry_yearly_heatmap.png",
+        img4     = "output/images/04_industry_risk_return.png",
     shell:
         """
         MPLBACKEND=Agg uv run jupytext --to notebook --execute \
@@ -74,13 +82,18 @@ import nbformat
 nb = nbformat.read('{output.notebook}', as_version=4)
 nb.cells = [c for c in nb.cells
             if not (c.cell_type == 'raw' and 'jupytext' in c.source)]
+nb.metadata.pop('jupytext', None)
 nbformat.write(nb, '{output.notebook}')
 "
         """
 
-# ---------------------------------------------------------------------------
-# Utility rules
-# ---------------------------------------------------------------------------
-
-# Re-run a single stage by name:  snakemake -R download_example
-# Force all:                       snakemake --forceall
+rule create_synth_prices:
+    input:
+        countries  = "data/processed/ken_french/international_countries/monthly_returns",
+        industries = "data/processed/ken_french/industry_portfolios_30/daily_returns.csv",
+        script     = "pipeline/03_create_synth_prices.py",
+    output:
+        "data/processed/ken_french/countries_synth_prices.csv",
+        "data/processed/ken_french/industries_synth_prices.csv",
+    shell:
+        "uv run python {input.script}"
