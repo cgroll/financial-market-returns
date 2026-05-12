@@ -187,6 +187,100 @@ def compute_annualized_volatility(prices: pd.DataFrame | pd.Series) -> pd.DataFr
     return pd.DataFrame({"vol_pct": vol, "ann_vol_pct": vol * ann_factor})
 
 
+def compute_strategy_turnover(
+    invested: pd.DataFrame | pd.Series,
+) -> pd.Series:
+    """Annualized turnover of a binary long/cash strategy.
+
+    Each transition between invested and cash counts as 100% trade volume.
+    Turnover = total trade volume / 2, annualized over the length of the series.
+
+    Parameters
+    ----------
+    invested:
+        Boolean Series or DataFrame (one column per asset) as produced by
+        :func:`compute_ts_momentum_strategy`.
+
+    Returns
+    -------
+    Series of annualized turnover (% per year) indexed by asset name.
+    """
+    if isinstance(invested, pd.Series):
+        invested = invested.to_frame()
+
+    results = {}
+    for col in invested.columns:
+        s = invested[col].dropna()
+        n_transitions = int(s.astype(int).diff().abs().sum())
+        n_years = (s.index[-1] - s.index[0]).days / 365.25
+        results[col] = (n_transitions * 100) / 2 / n_years
+
+    return pd.Series(results, name="annual_turnover_pct")
+
+
+def compute_ts_momentum_strategy(
+    prices: pd.DataFrame | pd.Series,
+    lookback: int = 12,
+    skip: int = 1,
+) -> pd.DataFrame:
+    """Time-series momentum (trend-following) strategy on daily prices.
+
+    Signal is computed on the last business day of each month using the
+    ``lookback``-minus-``skip`` momentum:
+        mom_t = (eom[t - skip] - eom[t - lookback]) / eom[t - lookback]
+
+    A positive signal triggers a long position in the asset from the next
+    trading day; a non-positive signal moves to cash (zero return).
+
+    Parameters
+    ----------
+    prices:
+        Daily (or any frequency) price Series for a *single* asset.
+    lookback:
+        Number of months in the momentum window (default 12).
+    skip:
+        Months skipped at the recent end to avoid short-term reversal
+        (default 1, giving the classic 12-1 momentum).
+
+    Returns
+    -------
+    DataFrame indexed like *prices* with columns:
+        strategy_price  – cumulative strategy price starting at 1.0
+        invested        – bool, True = long asset, False = cash
+    """
+    if isinstance(prices, pd.DataFrame):
+        if prices.shape[1] != 1:
+            raise ValueError("Pass a single-column Series or DataFrame.")
+        prices = prices.iloc[:, 0]
+
+    # End-of-month prices (last business day of each month)
+    eom = prices.resample("BME").last()
+
+    # 12-1 momentum: use price from `skip` months ago vs `lookback` months ago
+    mom = (eom.shift(skip) - eom.shift(lookback)) / eom.shift(lookback)
+    signal = (mom > 0).dropna()
+
+    # The signal computed at close of month-end date t applies starting the
+    # next business day, so shift each signal date forward by 1 business day
+    # before forward-filling to the daily index.
+    signal_next = signal.copy()
+    signal_next.index = signal.index + pd.offsets.BDay(1)
+
+    all_idx = prices.index.union(signal_next.index).sort_values()
+    daily_invested = (
+        signal_next.reindex(all_idx).ffill().reindex(prices.index).fillna(False)
+    )
+
+    asset_returns = prices.pct_change().fillna(0.0)
+    strategy_returns = asset_returns.where(daily_invested, 0.0)
+    strategy_price = (1.0 + strategy_returns).cumprod()
+
+    return pd.DataFrame(
+        {"strategy_price": strategy_price, "invested": daily_invested},
+        index=prices.index,
+    )
+
+
 def compute_yearly_max_drawdowns(prices: pd.DataFrame | pd.Series) -> pd.DataFrame:
     """Maximum drawdown within each calendar year.
 

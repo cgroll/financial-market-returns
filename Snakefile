@@ -14,6 +14,13 @@
 #   snakemake --cores 1 -R <rule>   force-re-run a specific rule
 #   snakemake --forceall --cores 4  re-run everything unconditionally
 
+INDUSTRIES_30 = [
+    "Food", "Beer", "Smoke", "Games", "Books", "Hshld", "Clths", "Hlth",
+    "Chems", "Txtls", "Cnstr", "Steel", "FabPr", "ElcEq", "Autos", "Carry",
+    "Mines", "Coal", "Oil", "Util", "Telcm", "Servs", "BusEq", "Paper",
+    "Trans", "Whlsl", "Rtail", "Meals", "Fin", "Other",
+]
+
 # ---------------------------------------------------------------------------
 # Default target — all final processed outputs
 # ---------------------------------------------------------------------------
@@ -24,6 +31,7 @@ rule all:
         "data/processed/ken_french/industries_synth_prices.csv",
         "book/notebooks/04_analyse_industry_portfolios.ipynb",
         "book/notebooks/05_analyse_country_portfolios.ipynb",
+        "book/notebooks/06_industry_trend_following.ipynb",
 
 # ---------------------------------------------------------------------------
 # Download rules
@@ -111,6 +119,35 @@ rule analyse_country_portfolios:
         img9     = "output/images/05_country_drawdown_bar.png",
         img10    = "output/images/05_country_dd_duration_bar.png",
         img11    = "output/images/05_country_date_ranges.png",
+    shell:
+        """
+        MPLBACKEND=Agg uv run jupytext --to notebook --execute \
+            --set-kernel python3 \
+            --output {output.notebook} {input.script} && \
+        uv run python -c "
+import nbformat
+nb = nbformat.read('{output.notebook}', as_version=4)
+nb.cells = [c for c in nb.cells
+            if not (c.cell_type == 'raw' and 'jupytext' in c.source)]
+nb.metadata.pop('jupytext', None)
+nbformat.write(nb, '{output.notebook}')
+"
+        """
+
+rule industry_trend_following:
+    input:
+        script = "pipeline/06_industry_trend_following.py",
+        data   = "data/processed/ken_french/industries_synth_prices.csv",
+    output:
+        notebook = "book/notebooks/06_industry_trend_following.ipynb",
+        img1     = "output/images/06_industry_tf_risk_return.png",
+        img2     = "output/images/06_industry_tf_dd_return.png",
+        img3     = "output/images/06_industry_tf_ret_scatter.png",
+        img4     = "output/images/06_industry_tf_dd_scatter.png",
+        img5     = "output/images/06_industry_tf_frac_invested_bar.png",
+        img6     = "output/images/06_industry_tf_invested_heatmap.png",
+        img7     = "output/images/06_industry_tf_turnover_bar.png",
+        per_asset = expand("output/images/06_industry_tf_{industry}.png", industry=INDUSTRIES_30),
     shell:
         """
         MPLBACKEND=Agg uv run jupytext --to notebook --execute \
