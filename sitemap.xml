@@ -7,4 +7,10 @@
   <url>
     <loc>http://localhost:3000/notebooks/analyse-industry-portfolios</loc>
   </url>
+  <url>
+    <loc>http://localhost:3000/notebooks/analyse-country-portfolios</loc>
+  </url>
+  <url>
+    <loc>http://localhost:3000/notebooks/industry-trend-following</loc>
+  </url>
 </urlset>
