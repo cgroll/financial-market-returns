@@ -15,9 +15,10 @@
 # All series are anchored at 1 USD on their first available month-end date.
 
 # %%
-import pandas as pd
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
+import pandas as pd
 import seaborn as sns
 from fmr.paths import ProjPaths
 from fmr.finance import (
@@ -34,6 +35,50 @@ paths = ProjPaths()
 prices = pd.read_csv(
     paths.countries_synth_prices_path, index_col="date", parse_dates=True
 )
+
+# %% [markdown]
+# ## Data coverage
+
+# %% [markdown]
+# ### Date ranges
+
+# %%
+first_dates = prices.apply(lambda s: s.first_valid_index())
+last_dates = prices.apply(lambda s: s.last_valid_index())
+order = first_dates.sort_values().index
+
+fig, ax = plt.subplots(figsize=(10, 7))
+for i, country in enumerate(order):
+    start = mdates.date2num(first_dates[country])
+    end = mdates.date2num(last_dates[country])
+    ax.barh(i, end - start, left=start, height=0.6, color="steelblue", alpha=0.8)
+
+ax.set_yticks(range(len(order)))
+ax.set_yticklabels(order)
+ax.xaxis_date()
+ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+ax.xaxis.set_major_locator(mdates.YearLocator(10))
+ax.grid(True, axis="x", linewidth=0.4, alpha=0.6)
+fig.tight_layout()
+fig.savefig(paths.images_path / "05_country_date_ranges.png", dpi=150, bbox_inches="tight")
+plt.show()
+
+# %% [markdown]
+# ```{figure} ../../output/images/05_country_date_ranges.png
+# :name: fig-05-country-date-ranges
+# Observation window for each country portfolio, sorted by start date.
+# ```
+
+# %% [markdown]
+# ### Filter to equal-length series
+#
+# Keep only countries whose data begins at the earliest available date, then
+# drop any remaining rows with missing values so that all retained series have
+# identical length.
+
+# %%
+earliest_start = first_dates.min()
+prices = prices.loc[:, first_dates == earliest_start].dropna()
 
 # %% [markdown]
 # ## Part 1 — Price and drawdown time series

@@ -110,6 +110,7 @@ rule analyse_country_portfolios:
         img8     = "output/images/05_country_dd_return.png",
         img9     = "output/images/05_country_drawdown_bar.png",
         img10    = "output/images/05_country_dd_duration_bar.png",
+        img11    = "output/images/05_country_date_ranges.png",
     shell:
         """
         MPLBACKEND=Agg uv run jupytext --to notebook --execute \
