@@ -72,6 +72,12 @@ rule analyse_industry_portfolios:
         img2     = "output/images/04_industry_log_prices.png",
         img3     = "output/images/04_industry_yearly_heatmap.png",
         img4     = "output/images/04_industry_risk_return.png",
+        img5     = "output/images/04_industry_drawdowns.png",
+        img6     = "output/images/04_industry_vol_return.png",
+        img7     = "output/images/04_industry_dd_return.png",
+        img8     = "output/images/04_industry_drawdown_bar.png",
+        img9     = "output/images/04_industry_dd_duration_bar.png",
+        img10    = "output/images/04_industry_yearly_dd_heatmap.png",
     shell:
         """
         MPLBACKEND=Agg uv run jupytext --to notebook --execute \
