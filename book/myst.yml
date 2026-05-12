@@ -1,6 +1,6 @@
 version: 1
 project:
-  title: My Research Project
+  title: Financial Market Returns
   authors:
     - name: Your Name
   copyright: '2026'
@@ -9,7 +9,7 @@ project:
     - Thumbs.db
     - .DS_Store
     - '**.ipynb_checkpoints'
-  github: your-username/your-repo-name
+  github: cgroll/financial-market-returns
   toc:
     - file: markdown/index.md
     - title: Analysis
