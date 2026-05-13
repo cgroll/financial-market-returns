@@ -9,12 +9,13 @@
 # ---
 
 # %% [markdown]
-# # 30 Industry Portfolios — Trend-Following Strategy
+# # International Country Portfolios — Trend-Following Strategy
 #
-# For each industry portfolio we run a monthly 12-1 time-series momentum
+# For each country portfolio we run a monthly 12-1 time-series momentum
 # strategy: invest in the asset when the 11-month return ending one month ago
-# is positive; otherwise hold cash (zero return).  Both the buy-and-hold and
-# strategy series start at 1 USD and share the same daily price grid.
+# is positive; otherwise hold cash (zero return).  Only countries whose data
+# begins at the earliest available date are included, matching the filter in
+# the performance analysis notebook.
 
 # %%
 import pandas as pd
@@ -33,9 +34,11 @@ from fmr.finance import (
 )
 
 paths = ProjPaths()
-prices = pd.read_csv(
-    paths.industries_synth_prices_path, index_col="date", parse_dates=True
+prices_all = pd.read_csv(
+    paths.countries_synth_prices_path, index_col="date", parse_dates=True
 )
+first_dates = prices_all.apply(lambda s: s.first_valid_index())
+prices = prices_all.loc[:, first_dates == first_dates.min()].dropna()
 
 # %% [markdown]
 # ## Build strategy prices
@@ -81,21 +84,24 @@ for col in prices.columns:
 
 ax.scatter(max_dd_orig, ann_ret_orig, s=60, color="steelblue", zorder=3, label="Buy & hold")
 ax.scatter(max_dd_strat, ann_ret_strat, s=60, color="darkorange", zorder=3, label="12-1 Momentum")
+for col in prices.columns:
+    ax.annotate(col, (max_dd_orig[col], ann_ret_orig[col]),
+                textcoords="offset points", xytext=(5, 3), fontsize=7)
 
 ax.set_xlabel("Maximum drawdown (%)")
 ax.set_ylabel("Annualized return (%)")
 ax.legend()
 ax.grid(True, linewidth=0.4, alpha=0.6)
 fig.tight_layout()
-fig.savefig(paths.images_path / "06_industry_tf_risk_return.png", dpi=150, bbox_inches="tight")
+fig.savefig(paths.images_path / "07_country_tf_risk_return.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # %% [markdown]
-# ```{figure} ../../output/images/06_industry_tf_risk_return.png
-# :name: fig-06-industry-tf-risk-return
+# ```{figure} ../../output/images/07_country_tf_risk_return.png
+# :name: fig-07-country-tf-risk-return
 # Annualized return vs maximum drawdown for buy-and-hold (blue) and the 12-1
-# time-series momentum strategy (orange) across the 30 industry portfolios.
-# Gray lines connect each industry to its corresponding strategy.
+# time-series momentum strategy (orange) across the 14 country portfolios.
+# Gray lines connect each country to its corresponding strategy.
 # ```
 
 # %% [markdown]
@@ -113,34 +119,35 @@ for col in prices.columns:
 
 ax.scatter(avg5_dd_orig, ann_ret_orig, s=60, color="steelblue", zorder=3, label="Buy & hold")
 ax.scatter(avg5_dd_strat, ann_ret_strat, s=60, color="darkorange", zorder=3, label="12-1 Momentum")
+for col in prices.columns:
+    ax.annotate(col, (avg5_dd_orig[col], ann_ret_orig[col]),
+                textcoords="offset points", xytext=(5, 3), fontsize=7)
 
 ax.set_xlabel("Average max drawdown — 5 worst episodes (%)")
 ax.set_ylabel("Annualized return (%)")
 ax.legend()
 ax.grid(True, linewidth=0.4, alpha=0.6)
 fig.tight_layout()
-fig.savefig(paths.images_path / "06_industry_tf_dd_return.png", dpi=150, bbox_inches="tight")
+fig.savefig(paths.images_path / "07_country_tf_dd_return.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # %% [markdown]
-# ```{figure} ../../output/images/06_industry_tf_dd_return.png
-# :name: fig-06-industry-tf-dd-return
+# ```{figure} ../../output/images/07_country_tf_dd_return.png
+# :name: fig-07-country-tf-dd-return
 # Annualized return vs average of the 5 worst drawdowns for buy-and-hold (blue)
 # and the 12-1 time-series momentum strategy (orange).
-# Gray lines connect each industry to its corresponding strategy.
+# Gray lines connect each country to its corresponding strategy.
 # ```
 
 # %% [markdown]
 # ### Strategy vs constant-weight benchmark
 #
-# The momentum strategy is only invested ~69% of the time on average, so it
-# naturally carries less risk than buy-and-hold.  To isolate the value of
-# *timing*, we compare it against a static portfolio that holds the same
-# average weight in the risky asset for the entire period.
+# The momentum strategy is only partially invested on average, so it naturally
+# carries less risk than buy-and-hold.  To isolate the value of timing, we
+# compare it against a static portfolio that holds the same average weight in
+# the risky asset for the entire period.
 
 # %%
-# Build a constant-weight portfolio for each industry using its strategy's
-# average invested fraction as the fixed weight
 static_prices = pd.DataFrame(index=prices.index)
 for col in prices.columns:
     w = invested_flags[col].mean()
@@ -148,7 +155,7 @@ for col in prices.columns:
     static_prices[col] = (1.0 + w * asset_ret).cumprod()
 
 ann_ret_static = compute_annualized_returns(static_prices)
-max_dd_static = compute_drawdowns(static_prices).max()
+max_dd_static  = compute_drawdowns(static_prices).max()
 dd_stats_static = compute_worst_drawdown_stats(compute_individual_drawdowns(static_prices), ns=[5])
 avg5_dd_static = dd_stats_static["avg_max_dd_5"].reindex(prices.columns)
 
@@ -164,18 +171,21 @@ for col in prices.columns:
 
 ax.scatter(max_dd_static, ann_ret_static, s=60, color="seagreen", zorder=3, label="Constant weight")
 ax.scatter(max_dd_strat, ann_ret_strat, s=60, color="darkorange", zorder=3, label="12-1 Momentum")
+for col in prices.columns:
+    ax.annotate(col, (max_dd_static[col], ann_ret_static[col]),
+                textcoords="offset points", xytext=(5, 3), fontsize=7)
 
 ax.set_xlabel("Maximum drawdown (%)")
 ax.set_ylabel("Annualized return (%)")
 ax.legend()
 ax.grid(True, linewidth=0.4, alpha=0.6)
 fig.tight_layout()
-fig.savefig(paths.images_path / "06_industry_tf_cw_risk_return.png", dpi=150, bbox_inches="tight")
+fig.savefig(paths.images_path / "07_country_tf_cw_risk_return.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # %% [markdown]
-# ```{figure} ../../output/images/06_industry_tf_cw_risk_return.png
-# :name: fig-06-industry-tf-cw-risk-return
+# ```{figure} ../../output/images/07_country_tf_cw_risk_return.png
+# :name: fig-07-country-tf-cw-risk-return
 # Annualized return vs maximum drawdown for the constant-weight benchmark (green)
 # and the 12-1 momentum strategy (orange).  Each constant-weight portfolio holds
 # the same average risky-asset fraction as its paired momentum strategy, so any
@@ -194,18 +204,21 @@ for col in prices.columns:
 
 ax.scatter(avg5_dd_static, ann_ret_static, s=60, color="seagreen", zorder=3, label="Constant weight")
 ax.scatter(avg5_dd_strat, ann_ret_strat, s=60, color="darkorange", zorder=3, label="12-1 Momentum")
+for col in prices.columns:
+    ax.annotate(col, (avg5_dd_static[col], ann_ret_static[col]),
+                textcoords="offset points", xytext=(5, 3), fontsize=7)
 
 ax.set_xlabel("Average max drawdown — 5 worst episodes (%)")
 ax.set_ylabel("Annualized return (%)")
 ax.legend()
 ax.grid(True, linewidth=0.4, alpha=0.6)
 fig.tight_layout()
-fig.savefig(paths.images_path / "06_industry_tf_cw_dd_return.png", dpi=150, bbox_inches="tight")
+fig.savefig(paths.images_path / "07_country_tf_cw_dd_return.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # %% [markdown]
-# ```{figure} ../../output/images/06_industry_tf_cw_dd_return.png
-# :name: fig-06-industry-tf-cw-dd-return
+# ```{figure} ../../output/images/07_country_tf_cw_dd_return.png
+# :name: fig-07-country-tf-cw-dd-return
 # Annualized return vs average of the 5 worst drawdowns for the constant-weight
 # benchmark (green) and the 12-1 momentum strategy (orange).
 # Gray lines connect each pair.
@@ -228,14 +241,14 @@ ax.set_xlabel("Buy & hold annualized return (%)")
 ax.set_ylabel("Strategy annualized return (%)")
 ax.grid(True, linewidth=0.4, alpha=0.6)
 fig.tight_layout()
-fig.savefig(paths.images_path / "06_industry_tf_ret_scatter.png", dpi=150, bbox_inches="tight")
+fig.savefig(paths.images_path / "07_country_tf_ret_scatter.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # %% [markdown]
-# ```{figure} ../../output/images/06_industry_tf_ret_scatter.png
-# :name: fig-06-industry-tf-ret-scatter
-# Annualized return of the buy-and-hold (x) vs the 12-1 momentum strategy (y)
-# for each industry.  Points above the diagonal indicate the strategy outperformed.
+# ```{figure} ../../output/images/07_country_tf_ret_scatter.png
+# :name: fig-07-country-tf-ret-scatter
+# Annualized return of buy-and-hold (x) vs the 12-1 momentum strategy (y).
+# Points above the diagonal indicate the strategy outperformed.
 # ```
 
 # %% [markdown]
@@ -255,51 +268,52 @@ ax.set_xlabel("Buy & hold avg 5 worst drawdowns (%)")
 ax.set_ylabel("Strategy avg 5 worst drawdowns (%)")
 ax.grid(True, linewidth=0.4, alpha=0.6)
 fig.tight_layout()
-fig.savefig(paths.images_path / "06_industry_tf_dd_scatter.png", dpi=150, bbox_inches="tight")
+fig.savefig(paths.images_path / "07_country_tf_dd_scatter.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # %% [markdown]
-# ```{figure} ../../output/images/06_industry_tf_dd_scatter.png
-# :name: fig-06-industry-tf-dd-scatter
-# Average of the 5 worst drawdowns for buy-and-hold (x) vs the momentum strategy
-# (y).  Points below the diagonal indicate the strategy reduced drawdown risk.
+# ```{figure} ../../output/images/07_country_tf_dd_scatter.png
+# :name: fig-07-country-tf-dd-scatter
+# Average of the 5 worst drawdowns for buy-and-hold (x) vs the momentum strategy (y).
+# Points below the diagonal indicate the strategy reduced drawdown risk.
 # ```
 
 # %% [markdown]
 # ## Fraction of days invested
 
 # %% [markdown]
-# ### Overall fraction invested per industry
+# ### Overall fraction invested per country
 
 # %%
 frac_invested = invested_flags.mean().sort_values()
 
-fig, ax = plt.subplots(figsize=(10, 12))
+fig, ax = plt.subplots(figsize=(8, 5))
 frac_invested.plot(kind="barh", ax=ax, color="steelblue", width=0.7)
-ax.set_xlabel("Fraction of days invested in risky asset")
-ax.axvline(frac_invested.mean(), color="firebrick", linewidth=1, linestyle="--", label=f"Mean ({frac_invested.mean():.2f})")
+ax.set_xlabel("Fraction of months invested in risky asset")
+ax.axvline(frac_invested.mean(), color="firebrick", linewidth=1, linestyle="--",
+           label=f"Mean ({frac_invested.mean():.2f})")
 ax.legend()
 ax.grid(True, axis="x", linewidth=0.4, alpha=0.6)
 fig.tight_layout()
-fig.savefig(paths.images_path / "06_industry_tf_frac_invested_bar.png", dpi=150, bbox_inches="tight")
+fig.savefig(paths.images_path / "07_country_tf_frac_invested_bar.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # %% [markdown]
-# ```{figure} ../../output/images/06_industry_tf_frac_invested_bar.png
-# :name: fig-06-industry-tf-frac-invested-bar
-# Fraction of trading days the 12-1 momentum strategy is invested in each
-# industry portfolio, sorted ascending.  The dashed line marks the cross-industry mean.
+# ```{figure} ../../output/images/07_country_tf_frac_invested_bar.png
+# :name: fig-07-country-tf-frac-invested-bar
+# Fraction of months the 12-1 momentum strategy is invested in each country
+# portfolio, sorted ascending.  The dashed line marks the cross-country mean.
 # ```
 
 # %% [markdown]
-# ### Yearly fraction invested per industry
+# ### Yearly fraction invested per country
 
 # %%
 yearly_frac = (
     invested_flags.astype(float).groupby(invested_flags.index.year).mean() * 100
 )
 
-fig, ax = plt.subplots(figsize=(18, 8))
+fig, ax = plt.subplots(figsize=(14, 5))
 sns.heatmap(
     yearly_frac.T,
     ax=ax,
@@ -307,20 +321,20 @@ sns.heatmap(
     vmin=0,
     vmax=100,
     linewidths=0.3,
-    cbar_kws={"label": "Days invested (%)"},
+    cbar_kws={"label": "Months invested (%)"},
 )
 ax.set_xlabel("Year")
-ax.set_ylabel("Industry")
+ax.set_ylabel("Country")
 ax.tick_params(axis="x", labelsize=7, rotation=90)
 fig.tight_layout()
-fig.savefig(paths.images_path / "06_industry_tf_invested_heatmap.png", dpi=150, bbox_inches="tight")
+fig.savefig(paths.images_path / "07_country_tf_invested_heatmap.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # %% [markdown]
-# ```{figure} ../../output/images/06_industry_tf_invested_heatmap.png
-# :name: fig-06-industry-tf-invested-heatmap
-# Percentage of trading days per calendar year that the momentum strategy is
-# invested in each industry.  100 % = fully invested all year; 0 % = cash all year.
+# ```{figure} ../../output/images/07_country_tf_invested_heatmap.png
+# :name: fig-07-country-tf-invested-heatmap
+# Percentage of months per calendar year that the momentum strategy is invested
+# in each country.  100 % = fully invested all year; 0 % = cash all year.
 # ```
 
 # %% [markdown]
@@ -332,20 +346,21 @@ plt.show()
 # %%
 turnover = compute_strategy_turnover(invested_flags).sort_values()
 
-fig, ax = plt.subplots(figsize=(10, 12))
+fig, ax = plt.subplots(figsize=(8, 5))
 turnover.plot(kind="barh", ax=ax, color="steelblue", width=0.7)
 ax.set_xlabel("Annualized turnover (% per year)")
-ax.axvline(turnover.mean(), color="firebrick", linewidth=1, linestyle="--", label=f"Mean ({turnover.mean():.1f}%)")
+ax.axvline(turnover.mean(), color="firebrick", linewidth=1, linestyle="--",
+           label=f"Mean ({turnover.mean():.1f}%)")
 ax.legend()
 ax.grid(True, axis="x", linewidth=0.4, alpha=0.6)
 fig.tight_layout()
-fig.savefig(paths.images_path / "06_industry_tf_turnover_bar.png", dpi=150, bbox_inches="tight")
+fig.savefig(paths.images_path / "07_country_tf_turnover_bar.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # %% [markdown]
-# ```{figure} ../../output/images/06_industry_tf_turnover_bar.png
-# :name: fig-06-industry-tf-turnover-bar
-# Annualized strategy turnover for each industry portfolio.  One full
+# ```{figure} ../../output/images/07_country_tf_turnover_bar.png
+# :name: fig-07-country-tf-turnover-bar
+# Annualized strategy turnover for each country portfolio.  One full
 # invested→cash or cash→invested transition equals 100% trade volume;
 # turnover is total trade volume divided by 2, annualized.
 # ```
@@ -363,8 +378,8 @@ for col in prices.columns:
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 7), sharex=True)
 
-    ax1.plot(prices.index, prices[col], linewidth=0.6, color="steelblue", label="Buy & hold")
-    ax1.plot(strategy_prices.index, strategy_prices[col], linewidth=0.6, color="darkorange", label="12-1 Momentum")
+    ax1.plot(prices.index, prices[col], linewidth=0.8, color="steelblue", label="Buy & hold")
+    ax1.plot(strategy_prices.index, strategy_prices[col], linewidth=0.8, color="darkorange", label="12-1 Momentum")
     ax1.set_yscale("log")
     ax1.yaxis.set_major_formatter(mticker.ScalarFormatter())
     ax1.set_ylabel("Price (USD, log scale)")
@@ -372,15 +387,15 @@ for col in prices.columns:
     ax1.legend(fontsize=8)
     ax1.grid(True, linewidth=0.4, alpha=0.6)
 
-    ax2.plot(prices.index, -dd_orig, linewidth=0.6, color="steelblue", alpha=0.8, label="Buy & hold")
-    ax2.plot(strategy_prices.index, -dd_strat, linewidth=0.6, color="darkorange", alpha=0.8, label="12-1 Momentum")
+    ax2.plot(prices.index, -dd_orig, linewidth=0.8, color="steelblue", alpha=0.8, label="Buy & hold")
+    ax2.plot(strategy_prices.index, -dd_strat, linewidth=0.8, color="darkorange", alpha=0.8, label="12-1 Momentum")
     ax2.set_ylabel("Drawdown (%)")
     ax2.set_xlabel("Date")
     ax2.legend(fontsize=8)
     ax2.grid(True, linewidth=0.4, alpha=0.6)
 
     fig.tight_layout()
-    out_path = paths.images_path / f"06_industry_tf_{col}.png"
+    out_path = paths.images_path / f"07_country_tf_{col}.png"
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     display(Image(filename=str(out_path)))

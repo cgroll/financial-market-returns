@@ -17,6 +17,7 @@ project:
         - file: notebooks/04_analyse_industry_portfolios.ipynb
         - file: notebooks/05_analyse_country_portfolios.ipynb
         - file: notebooks/06_industry_trend_following.ipynb
+        - file: notebooks/07_country_trend_following.ipynb
 site:
   options:
     folders: true
