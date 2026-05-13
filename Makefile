@@ -1,4 +1,4 @@
-.PHONY: run dry-run serve
+.PHONY: run dry-run serve dag
 
 # Run the full pipeline (only rebuilds what's out of date)
 run:
@@ -11,3 +11,7 @@ dry-run:
 # Serve the book locally with live-reload
 serve:
 	cd book && uv run myst start
+
+# Regenerate the pipeline DAG image (requires graphviz)
+dag:
+	uv run snakemake --cores 1 dag.png

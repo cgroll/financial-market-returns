@@ -35,6 +35,12 @@ make run
 make serve        # opens http://localhost:3000
 ```
 
+## Pipeline overview
+
+![Pipeline DAG](dag.png)
+
+Regenerate after editing the Snakefile with `make dag` (requires `graphviz`).
+
 ## Pipeline commands
 
 | Command | Effect |
@@ -42,6 +48,7 @@ make serve        # opens http://localhost:3000
 | `make run` | Run all pipeline steps that are out of date |
 | `make dry-run` | Preview what would run without executing |
 | `make serve` | Build and serve the book locally at http://localhost:3000 |
+| `make dag` | Regenerate `dag.png` from the current Snakefile |
 
 Snakemake checks file timestamps automatically — re-run `make run` after
 editing a pipeline script and only the affected steps will re-execute.
