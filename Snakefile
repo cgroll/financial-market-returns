@@ -106,19 +106,7 @@ rule analyse_industry_portfolios:
         img9     = "output/images/04_industry_dd_duration_bar.png",
         img10    = "output/images/04_industry_yearly_dd_heatmap.png",
     shell:
-        """
-        MPLBACKEND=Agg uv run jupytext --to notebook --execute \
-            --set-kernel python3 \
-            --output {output.notebook} {input.script} && \
-        uv run python -c "
-import nbformat
-nb = nbformat.read('{output.notebook}', as_version=4)
-nb.cells = [c for c in nb.cells
-            if not (c.cell_type == 'raw' and 'jupytext' in c.source)]
-nb.metadata.pop('jupytext', None)
-nbformat.write(nb, '{output.notebook}')
-"
-        """
+        "bash pipeline/convert_to_nb_and_run.sh {input.script} {output.notebook}"
 
 rule analyse_country_portfolios:
     input:
@@ -138,19 +126,7 @@ rule analyse_country_portfolios:
         img10    = "output/images/05_country_dd_duration_bar.png",
         img11    = "output/images/05_country_date_ranges.png",
     shell:
-        """
-        MPLBACKEND=Agg uv run jupytext --to notebook --execute \
-            --set-kernel python3 \
-            --output {output.notebook} {input.script} && \
-        uv run python -c "
-import nbformat
-nb = nbformat.read('{output.notebook}', as_version=4)
-nb.cells = [c for c in nb.cells
-            if not (c.cell_type == 'raw' and 'jupytext' in c.source)]
-nb.metadata.pop('jupytext', None)
-nbformat.write(nb, '{output.notebook}')
-"
-        """
+        "bash pipeline/convert_to_nb_and_run.sh {input.script} {output.notebook}"
 
 rule industry_trend_following:
     input:
@@ -169,19 +145,7 @@ rule industry_trend_following:
         img7     = "output/images/06_industry_tf_turnover_bar.png",
         per_asset = expand("output/images/06_industry_tf_{industry}.png", industry=INDUSTRIES_30),
     shell:
-        """
-        MPLBACKEND=Agg uv run jupytext --to notebook --execute \
-            --set-kernel python3 \
-            --output {output.notebook} {input.script} && \
-        uv run python -c "
-import nbformat
-nb = nbformat.read('{output.notebook}', as_version=4)
-nb.cells = [c for c in nb.cells
-            if not (c.cell_type == 'raw' and 'jupytext' in c.source)]
-nb.metadata.pop('jupytext', None)
-nbformat.write(nb, '{output.notebook}')
-"
-        """
+        "bash pipeline/convert_to_nb_and_run.sh {input.script} {output.notebook}"
 
 rule country_trend_following:
     input:
@@ -200,19 +164,7 @@ rule country_trend_following:
         img7      = "output/images/07_country_tf_turnover_bar.png",
         per_asset = expand("output/images/07_country_tf_{country}.png", country=COUNTRIES_FULL_PERIOD),
     shell:
-        """
-        MPLBACKEND=Agg uv run jupytext --to notebook --execute \
-            --set-kernel python3 \
-            --output {output.notebook} {input.script} && \
-        uv run python -c "
-import nbformat
-nb = nbformat.read('{output.notebook}', as_version=4)
-nb.cells = [c for c in nb.cells
-            if not (c.cell_type == 'raw' and 'jupytext' in c.source)]
-nb.metadata.pop('jupytext', None)
-nbformat.write(nb, '{output.notebook}')
-"
-        """
+        "bash pipeline/convert_to_nb_and_run.sh {input.script} {output.notebook}"
 
 rule create_synth_prices:
     input:
