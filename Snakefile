@@ -95,16 +95,6 @@ rule analyse_industry_portfolios:
         data   = "data/processed/ken_french/industries_synth_prices.csv",
     output:
         notebook = "book/notebooks/04_analyse_industry_portfolios.ipynb",
-        img1     = "output/images/04_industry_prices.png",
-        img2     = "output/images/04_industry_log_prices.png",
-        img3     = "output/images/04_industry_yearly_heatmap.png",
-        img4     = "output/images/04_industry_risk_return.png",
-        img5     = "output/images/04_industry_drawdowns.png",
-        img6     = "output/images/04_industry_vol_return.png",
-        img7     = "output/images/04_industry_dd_return.png",
-        img8     = "output/images/04_industry_drawdown_bar.png",
-        img9     = "output/images/04_industry_dd_duration_bar.png",
-        img10    = "output/images/04_industry_yearly_dd_heatmap.png",
     shell:
         "bash pipeline/convert_to_nb_and_run.sh {input.script} {output.notebook}"
 
@@ -114,17 +104,6 @@ rule analyse_country_portfolios:
         data   = "data/processed/ken_french/countries_synth_prices.csv",
     output:
         notebook = "book/notebooks/05_analyse_country_portfolios.ipynb",
-        img1     = "output/images/05_country_prices.png",
-        img2     = "output/images/05_country_log_prices.png",
-        img3     = "output/images/05_country_drawdowns.png",
-        img4     = "output/images/05_country_yearly_heatmap.png",
-        img5     = "output/images/05_country_yearly_dd_heatmap.png",
-        img6     = "output/images/05_country_risk_return.png",
-        img7     = "output/images/05_country_vol_return.png",
-        img8     = "output/images/05_country_dd_return.png",
-        img9     = "output/images/05_country_drawdown_bar.png",
-        img10    = "output/images/05_country_dd_duration_bar.png",
-        img11    = "output/images/05_country_date_ranges.png",
     shell:
         "bash pipeline/convert_to_nb_and_run.sh {input.script} {output.notebook}"
 
@@ -134,16 +113,6 @@ rule industry_trend_following:
         data   = "data/processed/ken_french/industries_synth_prices.csv",
     output:
         notebook = "book/notebooks/06_industry_trend_following.ipynb",
-        img1     = "output/images/06_industry_tf_risk_return.png",
-        img2     = "output/images/06_industry_tf_dd_return.png",
-        img3     = "output/images/06_industry_tf_ret_scatter.png",
-        img4     = "output/images/06_industry_tf_dd_scatter.png",
-        img8     = "output/images/06_industry_tf_cw_risk_return.png",
-        img9     = "output/images/06_industry_tf_cw_dd_return.png",
-        img5     = "output/images/06_industry_tf_frac_invested_bar.png",
-        img6     = "output/images/06_industry_tf_invested_heatmap.png",
-        img7     = "output/images/06_industry_tf_turnover_bar.png",
-        per_asset = expand("output/images/06_industry_tf_{industry}.png", industry=INDUSTRIES_30),
     shell:
         "bash pipeline/convert_to_nb_and_run.sh {input.script} {output.notebook}"
 
@@ -153,16 +122,6 @@ rule country_trend_following:
         data   = "data/processed/ken_french/countries_synth_prices.csv",
     output:
         notebook  = "book/notebooks/07_country_trend_following.ipynb",
-        img1      = "output/images/07_country_tf_risk_return.png",
-        img2      = "output/images/07_country_tf_dd_return.png",
-        img3      = "output/images/07_country_tf_ret_scatter.png",
-        img4      = "output/images/07_country_tf_dd_scatter.png",
-        img8      = "output/images/07_country_tf_cw_risk_return.png",
-        img9      = "output/images/07_country_tf_cw_dd_return.png",
-        img5      = "output/images/07_country_tf_frac_invested_bar.png",
-        img6      = "output/images/07_country_tf_invested_heatmap.png",
-        img7      = "output/images/07_country_tf_turnover_bar.png",
-        per_asset = expand("output/images/07_country_tf_{country}.png", country=COUNTRIES_FULL_PERIOD),
     shell:
         "bash pipeline/convert_to_nb_and_run.sh {input.script} {output.notebook}"
 
